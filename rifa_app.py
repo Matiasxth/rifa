@@ -4,61 +4,70 @@ import os
 
 ARCHIVO_DATOS = 'rifa_data.csv'
 TOTAL_NUMEROS = 20000
+MAX_POR_PERSONA = 10
+CLAVE_ADMIN = "admin123"  # cambia esta clave
 
-# Crear CSV si no existe
+# Inicializa CSV si no existe
 if not os.path.exists(ARCHIVO_DATOS):
     df_init = pd.DataFrame(columns=['Número', 'Nombre', 'Correo', 'Pagado'])
     df_init.to_csv(ARCHIVO_DATOS, index=False)
 
-# Leer datos
+# Cargar datos
 df = pd.read_csv(ARCHIVO_DATOS)
 
-st.set_page_config(page_title="Rifa 20K", layout="wide")
-st.title("🎟️ Rifa de 20.000 Números")
-
-# Calcular números disponibles
+# Obtener números ocupados
 numeros_ocupados = df['Número'].tolist()
 numeros_disponibles = [n for n in range(1, TOTAL_NUMEROS + 1) if n not in numeros_ocupados]
 
-st.markdown(f"📊 Números disponibles: {len(numeros_disponibles)} / {TOTAL_NUMEROS}")
+# Configuración de la app
+st.set_page_config(page_title="Rifa de 20.000 Números", layout="centered")
+st.title("🎟️ Sistema de Rifa en Línea")
 
-# Entrada de datos
-st.header("Reserva tu número")
+st.markdown(f"**📌 Total de números:** {TOTAL_NUMEROS}")
+st.markdown(f"**✅ Disponibles:** {len(numeros_disponibles)}")
+st.markdown("---")
+
+# === CLIENTE ===
+st.header("🧍 Reservar Números")
+
 numeros_seleccionados = st.multiselect(
-    "Selecciona tus números (puedes elegir varios):",
+    f"Selecciona hasta {MAX_POR_PERSONA} números disponibles:",
     options=numeros_disponibles,
-    max_selections=10
+    max_selections=MAX_POR_PERSONA
 )
 
-nombre = st.text_input("Tu nombre")
-correo = st.text_input("Tu correo electrónico")
+nombre = st.text_input("Tu nombre completo")
+correo = st.text_input("Correo electrónico")
 
 if st.button("Reservar"):
     if not numeros_seleccionados:
-        st.warning("Debes seleccionar al menos un número.")
-    elif not nombre or not correo:
-        st.warning("Completa tu nombre y correo.")
+        st.warning("⚠️ Debes seleccionar al menos un número.")
+    elif not nombre.strip() or not correo.strip():
+        st.warning("⚠️ Ingresa nombre y correo.")
     else:
-        nuevos_registros = pd.DataFrame(
-            [[num, nombre, correo, False] for num in numeros_seleccionados],
+        nuevos = pd.DataFrame(
+            [[num, nombre.strip(), correo.strip(), False] for num in numeros_seleccionados],
             columns=df.columns
         )
-        df = pd.concat([df, nuevos_registros], ignore_index=True)
+        df = pd.concat([df, nuevos], ignore_index=True)
         df.to_csv(ARCHIVO_DATOS, index=False)
-        st.success(f"¡Has reservado los números: {', '.join(map(str, numeros_seleccionados))}!")
+        st.success(f"🎉 Números reservados: {', '.join(map(str, numeros_seleccionados))}")
 
-# ADMIN
-st.header("🛠️ Admin (Confirmación de pagos)")
-clave = st.text_input("Clave admin", type="password")
+# === ADMIN ===
+st.markdown("---")
+st.header("🔐 Panel Administrador")
+clave = st.text_input("Clave de administrador", type="password")
 
-if clave == "admin123":
-    st.dataframe(df.sort_values(by='Número'))
+if clave == CLAVE_ADMIN:
+    st.success("✅ Acceso concedido")
+    st.subheader("📋 Lista completa de reservas")
+    st.dataframe(df.sort_values(by="Número"))
 
-    numero_confirmar = st.number_input("Número a confirmar", min_value=1, max_value=TOTAL_NUMEROS)
+    numero_confirmar = st.number_input("Confirmar pago para el número:", min_value=1, max_value=TOTAL_NUMEROS, step=1)
     if st.button("Confirmar pago"):
         if numero_confirmar in df['Número'].values:
             df.loc[df['Número'] == numero_confirmar, 'Pagado'] = True
             df.to_csv(ARCHIVO_DATOS, index=False)
-            st.success(f"Número {numero_confirmar} marcado como pagado.")
+            st.success(f"✅ Número {numero_confirmar} marcado como pagado.")
         else:
-            st.error("Ese número aún no ha sido reservado.")
+            st.error("⚠️ Ese número no ha sido reservado aún.")
