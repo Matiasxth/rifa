@@ -172,3 +172,5 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+# Archivo de datos de la rifa
+rifa_data.csv
